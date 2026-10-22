@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DeviceDefault follows the phone's own look (One UI on Samsung). -->
+    <style name="Theme.PopShare" parent="android:Theme.DeviceDefault.DayNight" />
+
+    <!-- Transparent activity that draws its own bottom sheet over the app you're sharing from. -->
+    <style name="Theme.PopShare.Sheet" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.35</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.InputMethod</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Never drawn: the trampoline finishes in onCreate. -->
+    <style name="Theme.PopShare.Invisible" parent="android:Theme.NoDisplay" />
+</resources>

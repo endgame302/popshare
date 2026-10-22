@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PopShare</string>
+    <string name="share_label">Pop-up share</string>
+    <string name="sheet_title">Open in pop-up</string>
+    <string name="sheet_hint">Tap to open in pop-up view · Long-press to open full screen</string>
+    <string name="no_targets">No app can receive this content.</string>
+    <string name="fallback_toast">Shizuku isn\'t ready, opened full screen</string>
+    <string name="launch_failed">Couldn\'t open %1$s</string>
+    <string name="preparing">Preparing files…</string>
+
+    <string name="settings_shizuku">Shizuku</string>
+    <string name="shizuku_ok">Ready. Shares open in pop-up view.</string>
+    <string name="shizuku_no_permission">Running, but PopShare isn\'t allowed yet.</string>
+    <string name="shizuku_not_running">Not running. Start it in the Shizuku app (Wireless debugging). Until then, shares open full screen.</string>
+    <string name="shizuku_not_installed">Not installed. Install Shizuku to get pop-up view; without it, shares open full screen.</string>
+    <string name="grant">Allow</string>
+    <string name="settings_favorites">Direct share entries</string>
+    <string name="favorites_hint">Starred apps appear as their own entries in the share sheet and at the top of the PopShare picker. If they don\'t show up, check that Direct share is on in your phone\'s settings.</string>
+    <string name="settings_test">Test</string>
+    <string name="test_button">Share a test message</string>
+    <string name="test_text">Hello from PopShare</string>
+</resources>

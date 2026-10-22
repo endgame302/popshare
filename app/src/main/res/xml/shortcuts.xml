@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Lets favourite apps appear as direct entries ("WhatsApp" with a PopShare badge) in the share sheet. -->
+    <share-target android:targetClass="app.popshare.ShareActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="app.popshare.category.POPUP_TARGET" />
+    </share-target>
+</shortcuts>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sheet_bg">#FF1E1E21</color>
+    <color name="sheet_text">#FFF2F2F4</color>
+    <color name="sheet_subtle">#FF9C9CA4</color>
+</resources>
