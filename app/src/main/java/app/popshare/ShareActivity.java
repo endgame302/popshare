@@ -152,7 +152,7 @@ public class ShareActivity extends Activity {
             return true;
         });
         int rows = (targets.size() + COLUMNS - 1) / COLUMNS;
-        int rowH = Ui.dp(this, 96);
+        int rowH = Ui.dp(this, 112); // 52dp icon + two lines of label + padding + spacing
         int maxH = (int) (getResources().getDisplayMetrics().heightPixels * 0.55f);
         LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, Math.min(rows * rowH, maxH));

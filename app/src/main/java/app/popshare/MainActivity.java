@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import rikka.shizuku.Shizuku;
@@ -25,6 +26,8 @@ import rikka.shizuku.Shizuku;
 public class MainActivity extends Activity {
     private static final int REQ_SHIZUKU = 42;
 
+    // One background thread for the whole screen instead of a new one per tap.
+    private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private LinearLayout content;
     private TextView shizukuStatus;
     private Button grantButton;
@@ -107,6 +110,7 @@ public class MainActivity extends Activity {
         Shizuku.removeBinderReceivedListener(binderReceived);
         Shizuku.removeBinderDeadListener(binderDead);
         Shizuku.removeRequestPermissionResultListener(permResult);
+        worker.shutdown();
         super.onDestroy();
     }
 
@@ -127,7 +131,7 @@ public class MainActivity extends Activity {
     }
 
     private void loadFavorites() {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        worker.execute(() -> {
             List<Targets.Target> all = Targets.all(getApplicationContext());
             Targets.publishShortcuts(getApplicationContext()); // refresh labels/icons after app updates
             runOnUiThread(() -> showFavorites(all));
@@ -164,7 +168,7 @@ public class MainActivity extends Activity {
             row.setOnClickListener(v -> {
                 boolean on = !Targets.isFavorite(this, t);
                 paintStar(star, on);
-                Executors.newSingleThreadExecutor().execute(
+                worker.execute(
                         () -> Targets.setFavorite(getApplicationContext(), t, on));
             });
             row.addView(star);

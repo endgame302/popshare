@@ -4,19 +4,21 @@ ColorOS-style sharing for other Android phones: the app you share to opens in a 
 pop-up window (Samsung pop-up view / Android freeform) instead of taking over the screen, and
 you stay in the app you shared from.
 
-Built and tested against One UI 8.5 (Android 16). Experimental.
+Built for One UI 8.5 (Android 16). The pop-up launch was verified by hand on that version; the app itself is experimental.
 
 ## How it works
 
 1. You share something and pick **Pop-up share** (or a starred app's own entry) in the share sheet.
 2. PopShare copies any shared files into its own storage, so the target app keeps access to them.
 3. Through [Shizuku](https://github.com/thedjchi/Shizuku), PopShare runs
-   `am start --windowingMode 5` on a tiny invisible activity of its own. That creates a new
-   pop-up window.
-4. The invisible activity starts the chosen app *inside the same window* and disappears.
+   `am start --windowingMode 5` on the chosen app, which opens it in a new pop-up window.
+   Text, links and single files go this way; the pop-up belongs to the target app, so its next
+   screens (e.g. WhatsApp's chat after you pick a contact) stay in the pop-up.
+4. Several files at once can't be passed through `am`, so for those PopShare opens a tiny
+   invisible activity of its own in the pop-up, which then starts the chosen app inside it.
+   Some apps may move their follow-up screens out of that pop-up.
 
-Because the last hop is made by PopShare itself, text, images, multiple files and file names
-all arrive intact. The shell never handles your content.
+Files are granted to the target app by PopShare itself, so the shell never handles your content.
 
 If Shizuku isn't running, shares still work; they open full screen.
 
@@ -32,7 +34,8 @@ In the picker: tap opens in a pop-up, long-press opens full screen.
 
 ## Known limits
 
-- Apps whose share screen insists on its own task (`singleTask`/`singleInstance`) open full screen.
+- Multi-file shares use the trampoline route; some apps may open their next screen full screen.
+- A target that is already open full screen may come forward full screen instead of in a pop-up.
 - Apps inside a work profile (e.g. Island) aren't listed.
 - Shared files are copied; very large videos take a moment. Copies are deleted after a day.
 

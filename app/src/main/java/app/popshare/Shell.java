@@ -53,12 +53,23 @@ final class Shell {
             Method m = Shizuku.class.getDeclaredMethod("newProcess", String[].class, String[].class, String.class);
             m.setAccessible(true);
             Process p = (Process) m.invoke(null, cmd, null, null);
-            String out = read(p.getInputStream()) + read(p.getErrorStream());
-            if (!p.waitFor(10, TimeUnit.SECONDS)) {
+            // Drain stderr on its own thread so a chatty stderr can't block stdout (or vice versa).
+            final String[] err = {""};
+            Thread errReader = new Thread(() -> {
+                try {
+                    err[0] = read(p.getErrorStream());
+                } catch (Exception ignored) {
+                }
+            }, "shell-stderr");
+            errReader.start();
+            String out = read(p.getInputStream());
+            boolean done = p.waitFor(10, TimeUnit.SECONDS);
+            errReader.join(1000);
+            if (!done) {
                 p.destroy();
-                return new Result(-1, out + "\n(timed out)");
+                return new Result(-1, out + err[0] + "\n(timed out)");
             }
-            return new Result(p.exitValue(), out);
+            return new Result(p.exitValue(), out + err[0]);
         } catch (Throwable t) {
             Log.w(TAG, "shell command failed", t);
             return new Result(-1, String.valueOf(t));

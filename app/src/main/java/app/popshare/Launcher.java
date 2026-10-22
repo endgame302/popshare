@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.OpenableColumns;
 import android.text.TextUtils;
@@ -21,6 +22,10 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,12 +33,7 @@ import java.util.UUID;
 
 /**
  * Turns an incoming share into an intent for the chosen app, and opens it in a pop-up.
- *
- * How the pop-up works: Shizuku runs `am start --windowingMode 5` on our own
- * {@link TrampolineActivity}, which creates a new task in freeform (Samsung pop-up view).
- * The trampoline then starts the chosen app *without* FLAG_ACTIVITY_NEW_TASK, so it joins
- * that same floating task. Because the trampoline belongs to this app, all extras, ClipData
- * and file grants pass through untouched — the shell never handles the shared content.
+ * See {@link #launch} for the two pop-up routes (direct, and via {@link TrampolineActivity}).
  */
 final class Launcher {
     private static final String TAG = "PopShare/Launcher";
@@ -189,9 +189,28 @@ final class Launcher {
     /** Outcome reported back to the UI. */
     enum Outcome { POPUP, FULLSCREEN_BY_CHOICE, FULLSCREEN_FALLBACK, FAILED }
 
-    /** Runs on a background thread. */
+    /**
+     * Runs on a background thread.
+     *
+     * Two pop-up routes, tried in order:
+     * 1. Direct: the shell starts the target app itself in freeform. The pop-up window then
+     *    belongs to the target, so when it moves on (e.g. WhatsApp: contact picker → chat) the
+     *    next screen stays in the pop-up. Same command as the manual tests. Used for text and
+     *    single-file shares; the file is readable because prepare() already granted it to the
+     *    target package directly.
+     * 2. Trampoline: needed when the share can't be expressed as `am` arguments (several files,
+     *    or anything that isn't text). The window belongs to PopShare's invisible activity, so a
+     *    target that later opens a screen in its own task may leave the pop-up.
+     */
     static Outcome launch(Context ctx, Intent out, boolean wantPopup) {
         if (wantPopup && Shell.state() == Shell.State.READY) {
+            String[] direct = directCommand(out);
+            if (direct != null) {
+                Shell.Result r = Shell.run(direct);
+                if (r.ok()) return Outcome.POPUP;
+                Log.w(TAG, "direct pop-up launch failed, trying trampoline: " + r.output);
+            }
+
             String token = park(out);
             String trampoline = ctx.getPackageName() + "/" + TrampolineActivity.class.getName();
             Shell.Result r = Shell.run("am", "start",
@@ -208,6 +227,52 @@ final class Launcher {
         boolean ok = startFullscreen(ctx, out);
         if (!ok) return Outcome.FAILED;
         return wantPopup ? Outcome.FULLSCREEN_FALLBACK : Outcome.FULLSCREEN_BY_CHOICE;
+    }
+
+    /** Extras that matter to the receiving app and that `am` can carry as plain strings. */
+    private static final Set<String> STRING_EXTRAS = new HashSet<>(Arrays.asList(
+            Intent.EXTRA_TEXT, Intent.EXTRA_SUBJECT, Intent.EXTRA_TITLE, Intent.EXTRA_HTML_TEXT));
+
+    /**
+     * Builds `am start` arguments that recreate this intent exactly, or returns null if it can't.
+     * The arguments go to the process as an argv array (no shell parsing), so text with quotes,
+     * spaces or newlines is passed through unchanged.
+     */
+    @SuppressWarnings("deprecation") // Bundle.get(): we really do want "whatever type it is"
+    static String[] directCommand(Intent out) {
+        if (out.getComponent() == null) return null;
+        if (!Intent.ACTION_SEND.equals(out.getAction())) return null; // a Uri list has no `am` form
+
+        List<String> cmd = new ArrayList<>(Arrays.asList(
+                "am", "start", "--user", "current", "--windowingMode", "5",
+                "-n", out.getComponent().flattenToShortString(),
+                "-a", Intent.ACTION_SEND));
+        if (out.getType() != null) {
+            cmd.add("-t");
+            cmd.add(out.getType());
+        }
+        Bundle extras = out.getExtras();
+        if (extras != null) {
+            for (String key : extras.keySet()) {
+                Object v = extras.get(key);
+                if (v == null) continue;
+                if (Intent.EXTRA_STREAM.equals(key) && v instanceof Uri) {
+                    cmd.add("--eu");
+                    cmd.add(key);
+                    cmd.add(v.toString());
+                } else if (STRING_EXTRAS.contains(key) && v instanceof CharSequence) {
+                    // Rich text (spans) is flattened to plain text here; fine for sharing.
+                    cmd.add("--es");
+                    cmd.add(key);
+                    cmd.add(v.toString());
+                } else if (Intent.EXTRA_STREAM.equals(key) || STRING_EXTRAS.contains(key)) {
+                    return null; // a content extra in a form `am` can't express: use the trampoline
+                }
+                // Other extras are the source app's own bookkeeping (referrers, chooser hints);
+                // receiving apps ignore them, so they're dropped rather than blocking this route.
+            }
+        }
+        return cmd.toArray(new String[0]);
     }
 
     private static boolean startFullscreen(Context ctx, Intent out) {
