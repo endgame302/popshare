@@ -6,7 +6,6 @@ import android.util.Log;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.util.concurrent.TimeUnit;
 
 import rikka.shizuku.Shizuku;
 
@@ -62,14 +61,28 @@ final class Shell {
                 }
             }, "shell-stderr");
             errReader.start();
+
+            // Shizuku's remote process doesn't support Process.waitFor(timeout): it throws
+            // "process hasn't exited" instead of waiting. So use the plain blocking waitFor()
+            // and enforce the timeout with a watchdog that destroys a hung process.
+            final boolean[] timedOut = {false};
+            Thread watchdog = new Thread(() -> {
+                try {
+                    Thread.sleep(10_000);
+                    timedOut[0] = true;
+                    p.destroy();
+                } catch (InterruptedException ignored) {
+                }
+            }, "shell-watchdog");
+            watchdog.setDaemon(true);
+            watchdog.start();
+
             String out = read(p.getInputStream());
-            boolean done = p.waitFor(10, TimeUnit.SECONDS);
+            int code = p.waitFor();
+            watchdog.interrupt();
             errReader.join(1000);
-            if (!done) {
-                p.destroy();
-                return new Result(-1, out + err[0] + "\n(timed out)");
-            }
-            return new Result(p.exitValue(), out + err[0]);
+            if (timedOut[0]) return new Result(-1, out + err[0] + "\n(timed out)");
+            return new Result(code, out + err[0]);
         } catch (Throwable t) {
             Log.w(TAG, "shell command failed", t);
             return new Result(-1, String.valueOf(t));

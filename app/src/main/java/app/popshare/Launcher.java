@@ -214,7 +214,7 @@ final class Launcher {
             String token = park(out);
             String trampoline = ctx.getPackageName() + "/" + TrampolineActivity.class.getName();
             Shell.Result r = Shell.run("am", "start",
-                    "--user", "current",
+                    "--user", userId(),
                     "--windowingMode", "5",          // WINDOWING_MODE_FREEFORM = Samsung pop-up view
                     "--activity-multiple-task",      // a fresh pop-up every time, never reuse an old one
                     "-n", trampoline,
@@ -244,7 +244,7 @@ final class Launcher {
         if (!Intent.ACTION_SEND.equals(out.getAction())) return null; // a Uri list has no `am` form
 
         List<String> cmd = new ArrayList<>(Arrays.asList(
-                "am", "start", "--user", "current", "--windowingMode", "5",
+                "am", "start", "--user", userId(), "--windowingMode", "5",
                 "-n", out.getComponent().flattenToShortString(),
                 "-a", Intent.ACTION_SEND));
         if (out.getType() != null) {
@@ -273,6 +273,15 @@ final class Launcher {
             }
         }
         return cmd.toArray(new String[0]);
+    }
+
+    /**
+     * The numeric user PopShare runs in (0 for the main profile). Passed instead of "current":
+     * on One UI with Dual Messenger, `--user current` brought up the "which WhatsApp?" chooser
+     * while `--user 0` opened WhatsApp directly.
+     */
+    static String userId() {
+        return String.valueOf(android.os.Process.myUid() / 100_000); // UserHandle.PER_USER_RANGE
     }
 
     private static boolean startFullscreen(Context ctx, Intent out) {
